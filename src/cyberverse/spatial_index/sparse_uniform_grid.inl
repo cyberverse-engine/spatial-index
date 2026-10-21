@@ -225,5 +225,48 @@ size_t sparse_uniform_grid<T>::memory_usage_in_bytes() const noexcept {
   return impl_.memory_usage_in_bytes();
 }
 
+template <typename T>
+  requires(std::is_default_constructible_v<T> && std::is_copy_constructible_v<T> && std::is_copy_assignable_v<T> &&
+           std::is_move_constructible_v<T> && std::is_move_assignable_v<T>)
+bool sparse_uniform_grid<T>::cell_range(const geometry::aabb& range, cell_coord& lo, cell_coord& hi) const noexcept {
+  return impl_.cell_range(range, lo, hi);
+}
+
+template <typename T>
+  requires(std::is_default_constructible_v<T> && std::is_copy_constructible_v<T> && std::is_copy_assignable_v<T> &&
+           std::is_move_constructible_v<T> && std::is_move_assignable_v<T>)
+const typename sparse_uniform_grid<T>::value_type*
+sparse_uniform_grid<T>::get_cell(const cell_coord& cell) const noexcept {
+  return impl_.get_cell(cell);
+}
+
+template <typename T>
+  requires(std::is_default_constructible_v<T> && std::is_copy_constructible_v<T> && std::is_copy_assignable_v<T> &&
+           std::is_move_constructible_v<T> && std::is_move_assignable_v<T>)
+typename sparse_uniform_grid<T>::value_type* sparse_uniform_grid<T>::get_cell(const cell_coord& cell) noexcept {
+  return impl_.get_cell(cell);
+}
+
+template <typename T>
+  requires(std::is_default_constructible_v<T> && std::is_copy_constructible_v<T> && std::is_copy_assignable_v<T> &&
+           std::is_move_constructible_v<T> && std::is_move_assignable_v<T>)
+typename sparse_uniform_grid<T>::value_type& sparse_uniform_grid<T>::ensure_cell(const cell_coord& cell) {
+  return impl_.ensure_cell(cell);
+}
+
+template <typename T>
+  requires(std::is_default_constructible_v<T> && std::is_copy_constructible_v<T> && std::is_copy_assignable_v<T> &&
+           std::is_move_constructible_v<T> && std::is_move_assignable_v<T>)
+bool sparse_uniform_grid<T>::erase_cell(const cell_coord& cell) noexcept {
+  return impl_.erase_cell(cell);
+}
+
+template <typename T>
+  requires(std::is_default_constructible_v<T> && std::is_copy_constructible_v<T> && std::is_copy_assignable_v<T> &&
+           std::is_move_constructible_v<T> && std::is_move_assignable_v<T>)
+bool sparse_uniform_grid<T>::contains_cell(const cell_coord& cell) const noexcept {
+  return impl_.contains_cell(cell);
+}
+
 } // namespace spatial_index
 } // namespace cyberverse

@@ -237,6 +237,43 @@ void test_sparse_promotion() {
   REQUIRE(*grid.get(glm::vec3(7.5f, 7.5f, 7.5f)) == 5);
 }
 
+template <typename Grid>
+void test_cell_api() {
+  using cell_coord = typename Grid::cell_coord;
+  Grid grid(glm::vec3(1.0f), glm::ivec3(2), glm::vec3(0.0f));
+
+  const cell_coord origin_cell{ 0, 0, 0 };
+  REQUIRE(grid.get_cell(origin_cell) == nullptr);
+
+  int& value = grid.ensure_cell(origin_cell);
+  value = 7;
+  REQUIRE(grid.contains_cell(origin_cell));
+  REQUIRE(grid.get_cell(origin_cell) != nullptr);
+  REQUIRE(*grid.get_cell(origin_cell) == 7);
+  REQUIRE(grid.ensure_cell(origin_cell) == 7);
+
+  cell_coord lo{};
+  cell_coord hi{};
+  REQUIRE(grid.cell_range(geometry::aabb(glm::vec3(0.0f), glm::vec3(1.0f)), lo, hi));
+  REQUIRE(lo == origin_cell);
+  REQUIRE(hi == origin_cell);
+
+  REQUIRE(grid.cell_range(geometry::aabb(glm::vec3(0.0f), glm::vec3(2.0f)), lo, hi));
+  REQUIRE(lo == origin_cell);
+  REQUIRE(hi == cell_coord(1, 1, 1));
+
+  const cell_coord far_cell{ 10, 0, 0 };
+  grid.ensure_cell(far_cell) = 9;
+  REQUIRE(grid.contains_cell(far_cell));
+  REQUIRE(*grid.get_cell(far_cell) == 9);
+
+  REQUIRE(grid.erase_cell(origin_cell));
+  REQUIRE(grid.get_cell(origin_cell) == nullptr);
+  REQUIRE_FALSE(grid.erase_cell(origin_cell));
+  REQUIRE(grid.contains_cell(far_cell));
+  REQUIRE(*grid.get_cell(far_cell) == 9);
+}
+
 } // namespace
 
 TEMPLATE_TEST_CASE("uniform grid cells and root expansion",
@@ -294,4 +331,11 @@ TEST_CASE("uniform grid accessors and invalid configuration", "[uniform_grid]") 
   REQUIRE(grid.memory_usage_in_bytes() > 0);
   REQUIRE(grid.get(glm::vec3(NAN)) == nullptr);
   REQUIRE_FALSE(grid.erase(glm::vec3(NAN)));
+}
+
+TEMPLATE_TEST_CASE("uniform grid cell API",
+                   "[uniform_grid]",
+                   cyberverse::spatial_index::sparse_uniform_grid<int>,
+                   cyberverse::spatial_index::dense_uniform_grid<int>) {
+  test_cell_api<TestType>();
 }

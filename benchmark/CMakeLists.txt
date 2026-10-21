@@ -11,7 +11,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(benchmark)
 
-add_executable(cyberverse_spatial_index_benchmarks uniform_grid_benchmark.cpp)
+add_executable(cyberverse_spatial_index_benchmarks uniform_grid_benchmark.cpp entry_index_benchmark.cpp)
 
 target_link_libraries(
   cyberverse_spatial_index_benchmarks

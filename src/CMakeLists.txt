@@ -12,9 +12,20 @@ set(
   cyberverse/spatial_index.hpp
   cyberverse/spatial_index/dense_uniform_grid.hpp
   cyberverse/spatial_index/dense_uniform_grid.inl
+  cyberverse/spatial_index/entry_query_scratch.hpp
+  cyberverse/spatial_index/algorithms.hpp
+  cyberverse/spatial_index/linear_index.hpp
+  cyberverse/spatial_index/linear_index.inl
+  cyberverse/spatial_index/cell_entry_index.hpp
+  cyberverse/spatial_index/cell_entry_index.inl
+  cyberverse/spatial_index/hash_index.hpp
+  cyberverse/spatial_index/hash_index.inl
+  cyberverse/spatial_index/bvh.hpp
+  cyberverse/spatial_index/bvh.inl
   cyberverse/spatial_index/sparse_uniform_grid.hpp
   cyberverse/spatial_index/sparse_uniform_grid.inl
   cyberverse/spatial_index/type_traits.hpp
+  cyberverse/spatial_index/detail/cell_range.hpp
   cyberverse/spatial_index/detail/keyed_array.hpp
   cyberverse/spatial_index/detail/uniform_grid_impl.hpp
   cyberverse/spatial_index/detail/uniform_grid_node.hpp

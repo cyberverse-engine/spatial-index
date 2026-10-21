@@ -25,6 +25,7 @@
 
 #include "cyberverse/geometry/bounds.hpp"
 #include "cyberverse/geometry/intersect.hpp"
+#include "cyberverse/spatial_index/detail/cell_range.hpp"
 #include "cyberverse/spatial_index/detail/uniform_grid_node.hpp"
 
 namespace cyberverse {
@@ -48,6 +49,7 @@ public:
 
   // Signed per-axis cell coordinate. A cell coordinate is independent from the tree depth.
   using cell_vec = glm::vec<3, std::int64_t>;
+  using cell_coord = cell_vec;
 
   uniform_grid_impl(glm::vec3 unit, glm::ivec3 branch_factor, glm::vec3 origin);
 
@@ -119,6 +121,18 @@ public:
 
   size_t memory_usage_in_bytes() const noexcept { return sizeof(*this) + root_.owned_memory_usage_in_bytes(); }
 
+  bool cell_range(const geometry::aabb& range, cell_coord& lo, cell_coord& hi) const noexcept;
+
+  const value_type* get_cell(const cell_coord& cell) const noexcept;
+
+  value_type* get_cell(const cell_coord& cell) noexcept;
+
+  value_type& ensure_cell(const cell_coord& cell);
+
+  bool erase_cell(const cell_coord& cell) noexcept;
+
+  bool contains_cell(const cell_coord& cell) const noexcept;
+
 private:
   static bool is_finite(const glm::vec3& value) noexcept {
     return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
@@ -181,16 +195,7 @@ private:
 
   static geometry::aabb
   make_cell_box(const glm::vec3& origin, const glm::vec3& unit, const cell_vec& cell, const cell_vec& span) noexcept {
-    const glm::dvec3 origin_d = to_dvec3(origin);
-    const glm::dvec3 unit_d = to_dvec3(unit);
-    const glm::dvec3 min_d = origin_d + to_dvec3(cell) * unit_d;
-    const glm::dvec3 max_d = origin_d + (to_dvec3(cell) + to_dvec3(span)) * unit_d;
-    const glm::vec3 min_f(min_d);
-    const glm::vec3 max_f(max_d);
-    if (!is_finite(min_f) || !is_finite(max_f)) {
-      return {};
-    }
-    return geometry::aabb(min_f, max_f);
+    return detail::cell_box(origin, unit, cell, span);
   }
 
   geometry::aabb cell_box(const cell_vec& cell, const cell_vec& span) const noexcept {
@@ -207,13 +212,6 @@ private:
     return double_to_cell(floored.x, cell.x) && double_to_cell(floored.y, cell.y) && double_to_cell(floored.z, cell.z);
   }
 
-  bool contains_cell(const cell_vec& cell) const noexcept {
-    // The invariant base + span is kept inside int64_t by expand_root(), so no subtraction can overflow here.
-    const cell_vec upper = base_cell_ + span_;
-    return cell.x >= base_cell_.x && cell.x < upper.x && cell.y >= base_cell_.y && cell.y < upper.y &&
-           cell.z >= base_cell_.z && cell.z < upper.z;
-  }
-
   size_t flat_index(std::int64_t x, std::int64_t y, std::int64_t z) const noexcept {
     const size_t bx = static_cast<size_t>(branch_factor_.x);
     const size_t by = static_cast<size_t>(branch_factor_.y);
@@ -221,36 +219,6 @@ private:
   }
 
   size_t flat_index(const cell_vec& index) const noexcept { return flat_index(index.x, index.y, index.z); }
-
-  /**
-   * @brief Cell range overlapped by an aabb
-   *
-   *  Cells are half-open: a range ending exactly on a cell boundary does not include the next cell. A degenerate range
-   *  (min == max) still includes the cell containing it.
-   */
-  bool cell_range(const geometry::aabb& range, cell_vec& lo, cell_vec& hi) const noexcept {
-    if (!range.is_valid()) {
-      return false;
-    }
-
-    const glm::dvec3 min_d = (to_dvec3(range.min()) - to_dvec3(origin_)) / to_dvec3(unit_);
-    const glm::dvec3 max_d = (to_dvec3(range.max()) - to_dvec3(origin_)) / to_dvec3(unit_);
-    if (!std::isfinite(min_d.x) || !std::isfinite(min_d.y) || !std::isfinite(min_d.z) || !std::isfinite(max_d.x) ||
-        !std::isfinite(max_d.y) || !std::isfinite(max_d.z)) {
-      return false;
-    }
-
-    glm::dvec3 lo_d = glm::floor(min_d);
-    glm::dvec3 hi_d = glm::floor(max_d);
-    for (int axis = 0; axis < 3; ++axis) {
-      if (hi_d[axis] > lo_d[axis] && max_d[axis] == hi_d[axis]) {
-        hi_d[axis] -= 1.0;
-      }
-    }
-
-    return double_to_cell(lo_d.x, lo.x) && double_to_cell(lo_d.y, lo.y) && double_to_cell(lo_d.z, lo.z) &&
-           double_to_cell(hi_d.x, hi.x) && double_to_cell(hi_d.y, hi.y) && double_to_cell(hi_d.z, hi.z);
-  }
 
   bool clip_to_root(cell_vec& lo, cell_vec& hi) const noexcept {
     const cell_vec root_hi = base_cell_ + span_ - cell_vec(1);
@@ -778,6 +746,60 @@ void uniform_grid_impl<T, Sparse>::set(const geometry::aabb& range, Fn&& generat
   ensure_root_contains(hi);
   Fn& generator_ref = generator;
   set_range_generator_node(root_, base_cell_, span_, lo, hi, generator_ref);
+}
+
+template <typename T, bool Sparse>
+bool uniform_grid_impl<T, Sparse>::cell_range(const geometry::aabb& range,
+                                              cell_coord& lo,
+                                              cell_coord& hi) const noexcept {
+  return detail::cell_range(origin_, unit_, range, lo, hi);
+}
+
+template <typename T, bool Sparse>
+bool uniform_grid_impl<T, Sparse>::contains_cell(const cell_coord& cell) const noexcept {
+  // The invariant base + span is kept inside int64_t by expand_root(), so no subtraction can overflow here.
+  const cell_vec upper = base_cell_ + span_;
+  return cell.x >= base_cell_.x && cell.x < upper.x && cell.y >= base_cell_.y && cell.y < upper.y &&
+         cell.z >= base_cell_.z && cell.z < upper.z;
+}
+
+template <typename T, bool Sparse>
+const typename uniform_grid_impl<T, Sparse>::value_type*
+uniform_grid_impl<T, Sparse>::get_cell(const cell_coord& cell) const noexcept {
+  if (!contains_cell(cell)) {
+    return nullptr;
+  }
+  const node_type* node = descend(cell);
+  return node ? node->value() : nullptr;
+}
+
+template <typename T, bool Sparse>
+typename uniform_grid_impl<T, Sparse>::value_type*
+uniform_grid_impl<T, Sparse>::get_cell(const cell_coord& cell) noexcept {
+  if (!contains_cell(cell)) {
+    return nullptr;
+  }
+  node_type* node = descend(cell);
+  return node ? node->value() : nullptr;
+}
+
+template <typename T, bool Sparse>
+typename uniform_grid_impl<T, Sparse>::value_type& uniform_grid_impl<T, Sparse>::ensure_cell(const cell_coord& cell) {
+  ensure_root_contains(cell);
+  node_type& leaf = ensure_leaf(cell);
+  if (!leaf.has_value()) {
+    leaf.ensure_value();
+    ++grid_num_;
+  }
+  return *leaf.value();
+}
+
+template <typename T, bool Sparse>
+bool uniform_grid_impl<T, Sparse>::erase_cell(const cell_coord& cell) noexcept {
+  if (!contains_cell(cell)) {
+    return false;
+  }
+  return erase_cell_node(root_, base_cell_, span_, cell - base_cell_);
 }
 
 template <typename T, bool Sparse>

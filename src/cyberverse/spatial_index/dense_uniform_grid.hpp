@@ -25,7 +25,7 @@ namespace spatial_index {
  *  算法，唯一的区别是节点使用连续的 vector 保存所有分支槽位，而不是稀疏的 keyed_array + unordered_map。
  *  稠密网格同样可以动态扩展，扩展策略与稀疏版本一致。
  *
- *  该类型满足 PartitionIndexType concept 的类型约束
+ *  该类型满足 CellIndexType concept 的类型约束
  *
  *  NOTE: This structure is not thread-safe.
  *  NOTE: The constructor throws std::invalid_argument for an invalid unit, branch factor or origin. ensure() and the
@@ -43,6 +43,7 @@ template <typename T>
 class dense_uniform_grid {
 public:
   using value_type = T;
+  using cell_coord = detail::cell_vec;
 
   /**
    * @brief Construct a dense uniform grid
@@ -293,13 +294,30 @@ public:
    */
   size_t memory_usage_in_bytes() const noexcept;
 
+  /**
+   * @brief Cell range overlapped by an AABB
+   *
+   *  Half-open cells; a range ending exactly on a cell boundary excludes the next cell.
+   */
+  bool cell_range(const geometry::aabb& range, cell_coord& lo, cell_coord& hi) const noexcept;
+
+  const value_type* get_cell(const cell_coord& cell) const noexcept;
+
+  value_type* get_cell(const cell_coord& cell) noexcept;
+
+  value_type& ensure_cell(const cell_coord& cell);
+
+  bool erase_cell(const cell_coord& cell) noexcept;
+
+  bool contains_cell(const cell_coord& cell) const noexcept;
+
 private:
   using impl_type = detail::uniform_grid_impl<value_type, false>;
 
   impl_type impl_;
 };
 
-static_assert(PartitionIndexType<dense_uniform_grid<int>>);
+static_assert(CellIndexType<dense_uniform_grid<int>>);
 
 } // namespace spatial_index
 } // namespace cyberverse

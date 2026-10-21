@@ -10,6 +10,12 @@
  */
 #pragma once
 
+#include "cyberverse/spatial_index/algorithms.hpp"
+#include "cyberverse/spatial_index/bvh.hpp"
+#include "cyberverse/spatial_index/cell_entry_index.hpp"
 #include "cyberverse/spatial_index/dense_uniform_grid.hpp"
+#include "cyberverse/spatial_index/entry_query_scratch.hpp"
+#include "cyberverse/spatial_index/hash_index.hpp"
+#include "cyberverse/spatial_index/linear_index.hpp"
 #include "cyberverse/spatial_index/sparse_uniform_grid.hpp"
 #include "cyberverse/spatial_index/type_traits.hpp"

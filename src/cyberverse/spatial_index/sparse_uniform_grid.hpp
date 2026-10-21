@@ -25,7 +25,7 @@ namespace spatial_index {
  * 树的深度由保存的数据中间距最大的网格决定，因此网格所保存的树根节点是动态的，如果创建的网格的位置不在当前根节点所表示的范围内则整个会提升整个树的深度，
  * 原根节点会变成新的树的根节点的某一层子节点。
  *
- *  该类型满足 PartitionIndexType concept 的类型约束
+ *  该类型满足 CellIndexType concept 的类型约束
  *
  *  NOTE: This structure is not thread-safe.
  *  NOTE: The constructor throws std::invalid_argument for an invalid unit, branch factor or origin. ensure() and the
@@ -43,6 +43,7 @@ template <typename T>
 class sparse_uniform_grid {
 public:
   using value_type = T;
+  using cell_coord = detail::cell_vec;
 
   /**
    * @brief Construct a sparse uniform grid
@@ -290,13 +291,30 @@ public:
    */
   size_t memory_usage_in_bytes() const noexcept;
 
+  /**
+   * @brief Cell range overlapped by an AABB
+   *
+   *  Half-open cells; a range ending exactly on a cell boundary excludes the next cell.
+   */
+  bool cell_range(const geometry::aabb& range, cell_coord& lo, cell_coord& hi) const noexcept;
+
+  const value_type* get_cell(const cell_coord& cell) const noexcept;
+
+  value_type* get_cell(const cell_coord& cell) noexcept;
+
+  value_type& ensure_cell(const cell_coord& cell);
+
+  bool erase_cell(const cell_coord& cell) noexcept;
+
+  bool contains_cell(const cell_coord& cell) const noexcept;
+
 private:
   using impl_type = detail::uniform_grid_impl<value_type, true>;
 
   impl_type impl_;
 };
 
-static_assert(PartitionIndexType<sparse_uniform_grid<int>>);
+static_assert(CellIndexType<sparse_uniform_grid<int>>);
 
 } // namespace spatial_index
 } // namespace cyberverse

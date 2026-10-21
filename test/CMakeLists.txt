@@ -10,7 +10,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
-add_executable(cyberverse_spatial_index_tests uniform_grid_test.cpp)
+add_executable(cyberverse_spatial_index_tests uniform_grid_test.cpp entry_index_test.cpp cell_entry_index_test.cpp)
 
 target_link_libraries(
   cyberverse_spatial_index_tests
